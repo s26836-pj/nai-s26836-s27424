@@ -28,7 +28,7 @@ Aby uruchomić program, wymagany jest Python 3.10+ oraz następujące biblioteki
     venv\Scripts\activate      # (Windows)
 
 2.  Zainstaluj wymagane pakiety:
-    pip install numpy gymnasium scikit-fuzzy
+    pip install -r requirements.txt
 
 3.  Uruchom symulację:
     python nazwa_twojego_pliku.py
@@ -320,4 +320,5 @@ def run_episodes(num_episodes: int = 10, max_steps: int = 500, render: bool = Tr
 
 
 if __name__ == "__main__":
+
     run_episodes(num_episodes=5, max_steps=500, render=True)
