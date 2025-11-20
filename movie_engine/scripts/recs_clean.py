@@ -66,6 +66,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.preprocessing import normalize
 from sklearn.cluster import KMeans
 from unidecode import unidecode
+import sys
 
 
 def norm(s: str) -> str:
@@ -803,7 +804,11 @@ if __name__ == "__main__":
     model = Hybrid3(ratings_csv=str(ratings_path))
     info = MovieInfo(str(meta_path))
 
-    user = "Błażej Kanczkowski"
+    default_user = "Błażej Kanczkowski"
+    if len(sys.argv) >= 2:
+        user = " ".join(sys.argv[1:])
+    else:
+        user = default_user
 
     print("\nRekomendacje dla użytkownika:", user)
     recs = model.recommend_for_user(user, 5)
@@ -840,6 +845,7 @@ if __name__ == "__main__":
                 print(
                     f"  - {title}  score={score:.3f} (brak danych OMDb)"
                 )
+
 
 
 
