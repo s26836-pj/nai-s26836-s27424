@@ -1,7 +1,7 @@
 """
 omdb_enricher.py — wzbogacanie danych filmów danymi z OMDb
 
-Autor: [TU_WPISZ_SIEBIE]
+Autor: Błażej Kanczkowski s26836 Adam Rzepa 27424
 
 Opis:
     - czyta plik ../ratings.csv (user,title,rating),
@@ -200,3 +200,4 @@ if __name__ == "__main__":
             "Ustaw np.: export OMDB_API_KEY=TWÓJ_KLUCZ"
         )
     build_meta_csv()
+
