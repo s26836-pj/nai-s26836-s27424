@@ -23,6 +23,7 @@ Instrukcja użycia:
     -Otrzymasz swój OMDb API Key na maila (do testu można użyć API: 23591517).
 
     Plik .env powinien znajdować sie /scripts
+        OMDB_API_KEY = {TWÓJ KLUCZ API}
     2. Upewnij się, że ratings.csv jest w katalogu nadrzędnym.
     3. Uruchom:
          python omdb_enricher.py
@@ -209,6 +210,7 @@ if __name__ == "__main__":
             "Ustaw np.: export OMDB_API_KEY=TWÓJ_KLUCZ"
         )
     build_meta_csv()
+
 
 
 
