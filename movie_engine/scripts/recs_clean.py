@@ -41,7 +41,8 @@ Instrukcja przygotowania środowiska:
              data/movies_meta_omdb.csv
 
     4. Uruchom silnik rekomendacji:
-         python recs_clean.py
+         python recs_clean.py - dla default user
+         python recs_clean.py "Twoje imię i Nazwisko"
 
     5. Skrypt wypisze:
          - rekomendacje dla wybranego użytkownika,
@@ -845,6 +846,7 @@ if __name__ == "__main__":
                 print(
                     f"  - {title}  score={score:.3f} (brak danych OMDb)"
                 )
+
 
 
 
