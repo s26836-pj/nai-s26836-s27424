@@ -1,9 +1,6 @@
 """
 recs_clean.py — Silnik rekomendacji filmów/seriali
 
-Zasady projektu:
-    https://TUTAJ_WSTAW_LINK_DO_ZASAD_PROJEKTU
-
 Autorzy:
     Błażej Kanczkowski (s26836)
     Adam Rzepa (s27424)
@@ -845,3 +842,4 @@ if __name__ == "__main__":
                 print(
                     f"  - {title}  score={score:.3f} (brak danych OMDb)"
                 )
+
