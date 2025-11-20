@@ -20,7 +20,7 @@ Instrukcja użycia:
     -https://www.omdbapi.com/apikey.aspx
     -Wybierz Free plan.
     -Podaj e-mail i utwórz konto.
-    -Otrzymasz swój OMDb API Key na maila (np. 123abc).
+    -Otrzymasz swój OMDb API Key na maila (do testu można użyć API: 23591517).
 
     Plik .env powinien znajdować sie /scripts
     2. Upewnij się, że ratings.csv jest w katalogu nadrzędnym.
@@ -209,5 +209,6 @@ if __name__ == "__main__":
             "Ustaw np.: export OMDB_API_KEY=TWÓJ_KLUCZ"
         )
     build_meta_csv()
+
 
 
