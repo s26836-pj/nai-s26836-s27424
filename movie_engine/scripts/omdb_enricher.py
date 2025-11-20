@@ -14,6 +14,15 @@ Opis:
 
 Instrukcja użycia:
     1. Ustaw zmienną środowiskową OMDB_API_KEY z kluczem API do OMDb.
+    Aby pobierać dane filmów, potrzebujesz bezpłatnego klucza API:
+
+    Wejdź na stronę:
+    -https://www.omdbapi.com/apikey.aspx
+    -Wybierz Free plan.
+    -Podaj e-mail i utwórz konto.
+    -Otrzymasz swój OMDb API Key na maila (np. 123abc).
+
+    Plik .env powinien znajdować sie /scripts
     2. Upewnij się, że ratings.csv jest w katalogu nadrzędnym.
     3. Uruchom:
          python omdb_enricher.py
@@ -200,4 +209,5 @@ if __name__ == "__main__":
             "Ustaw np.: export OMDB_API_KEY=TWÓJ_KLUCZ"
         )
     build_meta_csv()
+
 
