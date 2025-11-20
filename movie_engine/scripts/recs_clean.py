@@ -247,15 +247,13 @@ class CFItemItem:
 
         scores: dict[str, float] = {}
 
-        # positive contribution from liked movies
         for t in liked:
-            weight = (u[t] - min_user_rating + 1.0)  # e.g. 8 → 1, 10 → 3
+            weight = (u[t] - min_user_rating + 1.0) 
             for cand, sim in self.similar_movies(t, 30):
                 if cand in seen or cand in disliked:
                     continue
                 scores[cand] = scores.get(cand, 0.0) + sim * weight
 
-        # negative contribution from disliked movies
         for t in disliked:
             for cand, sim in self.similar_movies(t, 30):
                 if cand in scores:
@@ -842,5 +840,6 @@ if __name__ == "__main__":
                 print(
                     f"  - {title}  score={score:.3f} (brak danych OMDb)"
                 )
+
 
 
