@@ -30,7 +30,7 @@ Instrukcja użycia:
     4. Następnie uruchom recs_clean.py, aby użyć metadanych w CBF.
 
 Wymaga:
-    pip install pandas requests unidecode
+    pip install pandas requests unidecode python-dotenv
 """
 
 import os
@@ -210,6 +210,7 @@ if __name__ == "__main__":
             "Ustaw np.: export OMDB_API_KEY=TWÓJ_KLUCZ"
         )
     build_meta_csv()
+
 
 
 
