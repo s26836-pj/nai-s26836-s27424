@@ -33,7 +33,7 @@ Instrukcja przygotowania środowiska:
          venv\\Scripts\\activate         # Windows
 
     2. Zainstaluj wymagane biblioteki:
-         pip install pandas numpy scikit-learn unidecode requests
+         pip install pandas numpy scikit-learn unidecode requests python-dotenv openpyxl
 
     3. Przygotuj dane:
          - ratings.csv w katalogu nadrzędnym (obok tego pliku),
@@ -842,4 +842,5 @@ if __name__ == "__main__":
                 print(
                     f"  - {title}  score={score:.3f} (brak danych OMDb)"
                 )
+
 
