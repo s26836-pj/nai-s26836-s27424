@@ -1,5 +1,5 @@
 # ML: Decision Tree & SVM – Wine Quality & Heart Disease Classification
-## Autor
+## Autorzy
 **Błażej Kanczkowski s26836**  
 **Adam Rzepa s27424**
 
@@ -11,6 +11,12 @@ Poniższe kroki pozwalają każdemu użytkownikowi uruchomić projekt lokalnie.
 ```bash
 git clone https://github.com/<twoje-repo>/decision-tree-svm.git
 cd decision-tree-svm
+```
+
+## Po sklonowaniu repozytorium przejdź do głównego katalogu projektu:
+
+```bash
+cd decision-tree-svm/decision_tree
 ```
 
 ## Utworzenie środowiska wirtualnego
