@@ -1,0 +1,18 @@
+{
+  "class_to_idx": {
+    "healthy_low": 0,
+    "healthy_mid": 1,
+    "healthy_perfect": 2,
+    "unhealthy_low": 3,
+    "unhealthy_mid": 4,
+    "unhealthy_perfect": 5
+  },
+  "idx_to_class": {
+    "0": "healthy_low",
+    "1": "healthy_mid",
+    "2": "healthy_perfect",
+    "3": "unhealthy_low",
+    "4": "unhealthy_mid",
+    "5": "unhealthy_perfect"
+  }
+}
