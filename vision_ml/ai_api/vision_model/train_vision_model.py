@@ -21,6 +21,39 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, CSVLogger
 from tensorflow.keras.optimizers import Adam
 from sklearn.metrics import ConfusionMatrixDisplay
 
+"""
+Projekt: Klasyfikacja stanu roślin (Fittonia) na podstawie obrazów
+         z wykorzystaniem sieci konwolucyjnych (CNN)
+
+Opis problemu:
+Program realizuje klasyfikację obrazów roślin Fittonia na podstawie zdjęć
+liści. Każdy obraz przypisany jest do jednej z klas opisujących stan rośliny
+(np. low, mid, perfect).
+
+Zastosowane metody i techniki:
+- Transfer learning z wykorzystaniem MobileNetV2 (ImageNet)
+- Zamrożony backbone + własna głowa klasyfikacyjna
+- Augmentacja danych obrazowych
+- Categorical Focal Loss (redukcja wpływu łatwych przykładów)
+- 5-fold Stratified Cross-Validation
+- Metryki: Accuracy, Macro F1, Balanced Accuracy
+- Macierze pomyłek zapisywane jako pliki PNG
+
+Pipeline obejmuje:
+- Wczytanie adnotacji i weryfikację istnienia plików obrazów
+- Mapowanie klas tekstowych na indeksy liczbowe
+- Budowę datasetów tf.data dla treningu, walidacji i ewaluacji
+- Trening i walidację modelu w schemacie cross-validation
+- Trening modelu końcowego na pełnym zbiorze danych
+- Zapis modelu, metadanych eksperymentu oraz mapowania klas
+
+Autorzy:
+    Błażej Kanczkowski (s26836)
+    Adam Rzepa (s27424)
+
+Instrukcja uruchomienia:
+    README.md
+"""
 tf.keras.utils.set_random_seed(42)
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -30,6 +63,19 @@ BASE_DIR = Path(__file__).resolve().parent
 # Docelowo: ordinal regression (CORAL / cumulative logits).
 
 def main():
+    """
+       Główna funkcja treningowa dla klasyfikacji obrazów Fittonia.
+
+       Pipeline:
+       - wczytanie adnotacji i sprawdzenie istnienia plików
+       - mapowanie klas tekstowych na indeksy
+       - przygotowanie datasetów tf.data (augmentacja + preprocessing)
+       - 5-fold Stratified Cross-Validation
+       - trening MobileNetV2 (transfer learning)
+       - ewaluacja (accuracy, macro F1, confusion matrix)
+       - trening modelu końcowego na pełnym zbiorze
+       - zapis modelu, metadanych i mapowania klas
+       """
     OUTPUT_DIR = BASE_DIR / "vision_data"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -62,6 +108,18 @@ def main():
     df["class_idx"] = df["target_state"].map(class_to_idx).astype(int)
 
     def categorical_focal_loss(gamma=2.0):
+        """
+            Implementacja categorical focal loss.
+
+            Funkcja zmniejsza wagę łatwych przykładów i skupia uczenie
+            na próbkach trudnych do sklasyfikowania.
+
+            Args:
+                gamma (float): Parametr regulujący siłę skupienia na trudnych próbkach.
+
+            Returns:
+                function: Funkcja straty kompatybilna z Keras.
+            """
         cce = tf.keras.losses.CategoricalCrossentropy(
             from_logits=False,
             reduction=tf.keras.losses.Reduction.NONE
@@ -76,6 +134,22 @@ def main():
         return loss
 
     def load_and_preprocess(path, label_idx):
+        """
+        Wczytuje obraz z dysku i wykonuje podstawowe przetwarzanie.
+
+        Operacje:
+        - odczyt JPEG
+        - dekodowanie do RGB
+        - resize do IMAGE_SIZE
+        - konwersja do float32
+
+        Args:
+            path (tf.Tensor): Ścieżka do pliku obrazu.
+            label_idx (tf.Tensor): Indeks klasy.
+
+        Returns:
+            tuple: (obraz, indeks klasy)
+        """
         image = tf.io.read_file(path)
         image = tf.image.decode_jpeg(image, channels=3)
         image = tf.image.resize(image, IMAGE_SIZE)
@@ -83,6 +157,21 @@ def main():
         return image, label_idx
 
     def augment(image, label_idx):
+        """
+           Wykonuje augmentację danych obrazowych.
+
+           Operacje:
+           - losowe odbicie poziome
+           - losowy centralny crop
+           - losowa zmiana jasności
+
+           Args:
+               image (tf.Tensor): Obraz wejściowy.
+               label_idx (tf.Tensor): Indeks klasy.
+
+           Returns:
+               tuple: (zaaugmentowany obraz, indeks klasy)
+           """
         image = tf.image.random_flip_left_right(image)
 
         image = tf.image.central_crop(
@@ -99,11 +188,35 @@ def main():
         return image, label_idx
 
     def apply_preprocess_and_one_hot(image, label_idx):
+        """
+           Stosuje preprocessing MobileNetV2 oraz kodowanie one-hot etykiety.
+
+           Args:
+               image (tf.Tensor): Obraz po augmentacji.
+               label_idx (tf.Tensor): Indeks klasy.
+
+           Returns:
+               tuple:
+                   - obraz po preprocess_input
+                   - etykieta one-hot
+           """
         image = preprocess_input(image) # dostosowanie RGB do Mobilenet
         label = tf.one_hot(label_idx, depth=num_classes)
         return image, label
 
     def make_dataset(paths, label_indices, augment_data, shuffle_data=True):
+        """
+            Buduje dataset tf.data dla treningu lub walidacji.
+
+            Args:
+                paths (array-like): Ścieżki do obrazów.
+                label_indices (array-like): Indeksy klas.
+                augment_data (bool): Czy stosować augmentację.
+                shuffle_data (bool): Czy tasować dane.
+
+            Returns:
+                tf.data.Dataset: Gotowy dataset do treningu lub walidacji.
+            """
         ds = tf.data.Dataset.from_tensor_slices((paths, label_indices))
 
         if shuffle_data:
@@ -122,6 +235,15 @@ def main():
         return ds
 
     def make_eval_dataset(paths):
+        """
+         Tworzy dataset do ewaluacji lub predykcji (bez etykiet).
+
+         Args:
+             paths (array-like): Ścieżki do obrazów.
+
+         Returns:
+             tf.data.Dataset: Dataset obrazów po preprocess_input.
+         """
         ds = tf.data.Dataset.from_tensor_slices(paths)
 
         def _load(path):
@@ -136,6 +258,22 @@ def main():
         return ds
 
     def build_model(num_classes):
+        """
+          Buduje i kompiluje model CNN oparty o MobileNetV2.
+
+          Architektura:
+          - MobileNetV2 (zamrożony backbone)
+          - GlobalAveragePooling
+          - Dense(128) + L2
+          - Dropout
+          - Softmax
+
+          Args:
+              num_classes (int): Liczba klas wyjściowych.
+
+          Returns:
+              tf.keras.Model: Skompilowany model Keras.
+          """
         base_model = MobileNetV2(
             input_shape=(224, 224, 3),
             include_top=False,
@@ -163,6 +301,15 @@ def main():
         return model
 
     def save_confusion_matrix_png(cm, classes, title, out_path):
+        """
+            Zapisuje macierz pomyłek jako plik PNG.
+
+            Args:
+                cm (np.ndarray): Macierz pomyłek.
+                classes (list): Nazwy klas.
+                title (str): Tytuł wykresu.
+                out_path (Path): Ścieżka zapisu pliku PNG.
+            """
         fig, ax = plt.subplots(figsize=(6, 6))
         disp = ConfusionMatrixDisplay(
             confusion_matrix=cm,

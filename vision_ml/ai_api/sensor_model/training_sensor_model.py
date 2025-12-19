@@ -19,10 +19,75 @@ from tensorflow.keras import Model, Input
 from tensorflow.keras.layers import Dense, Dropout, BatchNormalization, LeakyReLU
 from tensorflow.keras.callbacks import EarlyStopping
 
+"""
+Projekt: Inteligentny system monitorowania stanu roślin (Fittonia)
+         – model decyzyjny oparty na danych sensorowych
+
+Opis:
+Moduł implementuje DRUGI model sztucznej inteligencji w systemie,
+który współpracuje z modelem wizyjnym (CNN – MobileNetV2).
+
+Model ten analizuje dane z czujników środowiskowych oraz cechy czasowe
+i przewiduje zestaw binarnych decyzji opisujących aktualne potrzeby rośliny.
+
+Predykcje modelu sensorowego:
+- forgot_to_water      – czy roślina wymaga podlania
+- too_dark_today       – czy poziom światła jest niewystarczający
+- worth_relocating     – czy warto zmienić lokalizację rośliny
+
+Integracja z modelem wizyjnym:
+Model sensorowy stanowi uzupełnienie modelu CV, który klasyfikuje wizualny
+stan rośliny (np. low / mid / perfect). Wspólnie modele tworzą
+dwupoziomowy system decyzyjny:
+    1) Model wizyjny – ocena kondycji na podstawie obrazu
+    2) Model sensorowy – rekomendacje działań na podstawie danych liczbowych
+
+Zastosowane metody:
+- Wieloetykietowa klasyfikacja binarna (multi-label)
+- Sieć MLP (Dense + BatchNorm + Dropout)
+- Funkcja straty: binary cross-entropy
+- Standaryzacja cech (StandardScaler)
+- 5-fold Stratified Cross-Validation (stratyfikacja po kombinacji etykiet)
+- Metryki: Macro F1, Weighted F1, Micro F1
+- Macierze pomyłek dla każdej etykiety (PNG + CSV)
+
+Pipeline obejmuje:
+- Wczytanie danych po przetworzeniu z czujników
+- Skalowanie cech wejściowych
+- Cross-validation modelu
+- Trening modelu końcowego na pełnym zbiorze danych
+- Zapis modelu, skalera, etykiet oraz pełnych metryk eksperymentu
+
+Autorzy:
+    Błażej Kanczkowski (s26836)
+    Adam Rzepa (s27424)
+
+Instrukcja uruchomienia:
+    README.md
+"""
+
 BASE_DIR = Path(__file__).resolve().parent
 tf.keras.utils.set_random_seed(42)
 
 def main():
+    """
+    Główna funkcja treningowa modelu sensorowego (drugi model AI).
+
+    Model realizuje wieloetykietową klasyfikację binarną na podstawie
+    danych z czujników środowiskowych oraz cech czasowych.
+
+    Etapy:
+    - wczytanie i przygotowanie danych sensorowych
+    - standaryzacja cech wejściowych
+    - 5-fold Stratified Cross-Validation (stratyfikacja po kombinacjach etykiet)
+    - ewaluacja przy użyciu Macro F1 i val_loss
+    - trening modelu końcowego na pełnym zbiorze
+    - zapis modelu, skalera, etykiet i metryk
+
+    Model ten współpracuje z modelem wizyjnym (CNN),
+    tworząc dwupoziomowy system decyzyjny dla roślin.
+    """
+
     OUTPUT_DIR = BASE_DIR / "sensor_data"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -53,6 +118,22 @@ def main():
     print(f"y_raw shape: {y_raw.shape}")
 
     def build_model(output_dim: int, input_dim: int) -> Model:
+        """
+          Buduje i kompiluje sieć MLP dla danych sensorowych.
+
+          Architektura:
+          - Dense + LeakyReLU
+          - Batch Normalization
+          - Dropout
+          - Warstwa wyjściowa sigmoid (multi-label)
+
+          Args:
+              output_dim (int): Liczba etykiet wyjściowych.
+              input_dim (int): Liczba cech wejściowych.
+
+          Returns:
+              tensorflow.keras.Model: Skompilowany model MLP.
+          """
         inp = Input(shape=(input_dim,))
         x = Dense(128)(inp)
         x = LeakyReLU()(x)
@@ -89,6 +170,9 @@ def main():
     fold_val_f1_macro = []
     fold_summaries = []
 
+    # 5-fold cross-validation
+    # Trening i walidacja modelu sensorowego w schemacie
+    # StratifiedKFold po kombinacji etykiet
     for train_idx, val_idx in skf.split(X_raw, combo_labels):
         print("\n" + "=" * 30)
         print(f"FOLD {fold}")
@@ -252,6 +336,20 @@ def main():
     )
 
     def plot_cm_single(cm, classes, title, out_path, normalize=False):
+        """
+        Rysuje i zapisuje macierz pomyłek dla pojedynczej etykiety.
+
+        Obsługuje wersję:
+        - surową (liczności)
+        - znormalizowaną (udziały procentowe)
+
+        Args:
+            cm (np.ndarray): Macierz pomyłek 2x2.
+            classes (list): Nazwy klas (np. ["neg", "pos"]).
+            title (str): Tytuł wykresu.
+            out_path (Path): Ścieżka zapisu pliku PNG.
+            normalize (bool): Czy normalizować wartości.
+        """
         if normalize:
             cm_display = cm.astype("float") / cm.sum(axis=1, keepdims=True)
         else:
