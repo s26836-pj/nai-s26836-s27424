@@ -1,8 +1,49 @@
+"""
+Projekt: Detekcja i klasyfikacja flag narodowych w obrazie wideo (OpenCV)
+
+Opis problemu:
+Program wykorzystuje obraz z kamery (stream wideo) do wykrywania
+czworokątnych obiektów przypominających flagi, a następnie klasyfikuje je
+na podstawie analizy kolorów w przestrzeni HSV.
+
+Obsługiwane flagi:
+    - POLAND  (biało-czerwona)
+    - UKRAINE (niebiesko-żółta)
+    - RUSSIA  (biało-niebiesko-czerwona)
+
+Główne etapy działania:
+    - Wykrywanie krawędzi i konturów
+    - Selekcja czworokątów o odpowiednich proporcjach
+    - Transformacja perspektywiczna (prostowanie flagi)
+    - Analiza udziału kolorów w poszczególnych pasach flagi
+    - Stabilizacja predykcji w czasie (historia etykiet)
+
+Biblioteki:
+    - OpenCV (cv2)
+    - NumPy
+    - collections (deque, Counter)
+
+Instrukcja uruchomienia:
+    python main.py
+    Q – zakończenie programu
+"""
 import cv2
 import numpy as np
 from collections import deque, Counter
 
 def order_points(pts):
+     """
+    Porządkuje cztery punkty czworokąta w kolejności:
+    [lewy-górny, prawy-górny, prawy-dolny, lewy-dolny].
+
+    Ułatwia poprawne wykonanie transformacji perspektywicznej.
+
+    Parametry:
+        pts (np.ndarray): Punkty konturu (4,1,2) lub (4,2)
+
+    Zwraca:
+        np.ndarray: Posortowane punkty (4,2) typu float32
+    """
     pts = pts.reshape(4, 2).astype(np.float32)
     s = pts.sum(axis=1)
     diff = np.diff(pts, axis=1)
@@ -14,6 +55,20 @@ def order_points(pts):
     return rect
 
 def warp_quad(frame, quad, out_w=360, out_h=240):
+      """
+    Wykonuje transformację perspektywiczną wykrytego czworokąta
+    do prostokątnego obrazu o stałym rozmiarze.
+
+    Parametry:
+        frame (np.ndarray): Oryginalna klatka wideo (BGR)
+        quad (np.ndarray): Cztery wierzchołki flagi
+        out_w (int): Szerokość obrazu wynikowego
+        out_h (int): Wysokość obrazu wynikowego
+
+    Zwraca:
+        warp (np.ndarray): Wyprostowany obraz flagi
+        Minv (np.ndarray): Macierz transformacji odwrotnej
+    """
     rect = order_points(quad)
     dst = np.array([[0, 0], [out_w-1, 0], [out_w-1, out_h-1], [0, out_h-1]], dtype=np.float32)
     M = cv2.getPerspectiveTransform(rect, dst)
@@ -22,12 +77,30 @@ def warp_quad(frame, quad, out_w=360, out_h=240):
     return warp, Minv
 
 def ratio_white(hsv):
+      """
+    Oblicza procentowy udział koloru białego w obrazie HSV.
+
+    Parametry:
+        hsv (np.ndarray): Obraz w przestrzeni HSV
+
+    Zwraca:
+        float: Udział pikseli białych (0–1)
+    """
     H, S, V = cv2.split(hsv)
     m = (S < 70) & (V > 140)
     return float(np.count_nonzero(m)) / m.size
 
 
 def ratio_red(hsv):
+    """
+    Oblicza udział koloru czerwonego (dwa zakresy HSV).
+
+    Parametry:
+        hsv (np.ndarray): Obraz HSV
+
+    Zwraca:
+        float: Udział koloru czerwonego
+    """
     m1 = cv2.inRange(hsv, (0, 50, 40), (12, 255, 255))
     m2 = cv2.inRange(hsv, (168, 50, 40), (179, 255, 255))
     m = cv2.bitwise_or(m1, m2)
@@ -35,10 +108,28 @@ def ratio_red(hsv):
 
 
 def ratio_blue(hsv):
+     """
+    Oblicza udział koloru niebieskiego w obrazie HSV.
+
+    Parametry:
+        hsv (np.ndarray): Obraz HSV
+
+    Zwraca:
+        float: Udział koloru niebieskiego
+    """
     m = cv2.inRange(hsv, (75, 40, 35), (140, 255, 255))
     return float(np.count_nonzero(m)) / m.size
 
 def ratio_yellow(hsv):
+    """
+    Oblicza udział koloru żółtego w obrazie HSV.
+
+    Parametry:
+        hsv (np.ndarray): Obraz HSV
+
+    Zwraca:
+        float: Udział koloru żółtego
+    """
     H, S, V = cv2.split(hsv)
 
     m1 = cv2.inRange(hsv, (12, 35, 35), (60, 255, 255))
@@ -49,6 +140,18 @@ def ratio_yellow(hsv):
     return float(np.count_nonzero(m)) / m.size
 
 def classify_flag(warp_bgr, thr=0.30):
+    """
+    Klasyfikuje flagę na podstawie udziału kolorów w poziomych pasach.
+
+    Parametry:
+        warp_bgr (np.ndarray): Wyprostowany obraz flagi (BGR)
+        thr (float): Minimalny próg pewności klasyfikacji
+
+    Zwraca:
+        label (str | None): Nazwa flagi lub None
+        best (float): Najlepszy wynik dopasowania
+        scores (dict): Wyniki dla wszystkich klas
+    """
     warp_bgr = cv2.resize(warp_bgr, (360, 240), interpolation=cv2.INTER_AREA)
     warp_bgr = cv2.GaussianBlur(warp_bgr, (3, 3), 0)
     hsv = cv2.cvtColor(warp_bgr, cv2.COLOR_BGR2HSV)
@@ -75,6 +178,16 @@ def classify_flag(warp_bgr, thr=0.30):
     return label, best, scores
 
 def find_quads(frame, max_quads=12):
+    """
+    Wyszukuje czworokątne obiekty w obrazie (potencjalne flagi).
+
+    Parametry:
+        frame (np.ndarray): Klatka wideo
+        max_quads (int): Maksymalna liczba zwracanych obiektów
+
+    Zwraca:
+        list[np.ndarray]: Lista konturów czworokątnych
+    """
     H, W = frame.shape[:2]
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
@@ -112,6 +225,12 @@ def find_quads(frame, max_quads=12):
     return [q for _, q in quads[:max_quads]]
 
 def main():
+     """
+    Główna pętla programu:
+    - Odczyt obrazu z kamery
+    - Detekcja flag
+    - Klasyfikacja i wizualizacja wyników
+    """
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("ERROR: Cannot open camera")
